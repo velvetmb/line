@@ -2,11 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Lines 97</title>
 <style>
   /* ── Reset & Base ── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
+  }
 
   body {
     background: #1a1a2e;
@@ -18,22 +24,25 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #e0e0e0;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    padding: 8px;
   }
 
   h1 {
-    font-size: 2.2rem;
+    font-size: clamp(1.5rem, 5vw, 2.2rem);
     letter-spacing: 4px;
     text-transform: uppercase;
     color: #f0c040;
     text-shadow: 0 0 18px #f0c04088;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   /* ── Score Bar ── */
   #scorebar {
     display: flex;
-    gap: 40px;
-    margin-bottom: 14px;
+    gap: clamp(20px, 8vw, 40px);
+    margin-bottom: 12px;
     align-items: center;
   }
 
@@ -42,14 +51,14 @@
   }
 
   .score-label {
-    font-size: 0.72rem;
+    font-size: clamp(0.65rem, 2vw, 0.72rem);
     letter-spacing: 2px;
     text-transform: uppercase;
     color: #888;
   }
 
   .score-value {
-    font-size: 1.8rem;
+    font-size: clamp(1.3rem, 4vw, 1.8rem);
     font-weight: 700;
     color: #f0c040;
     text-shadow: 0 0 10px #f0c04066;
@@ -58,13 +67,15 @@
   /* ── Next balls preview ── */
   #next-preview {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   #next-preview .label {
-    font-size: 0.72rem;
+    font-size: clamp(0.65rem, 2vw, 0.72rem);
     letter-spacing: 2px;
     text-transform: uppercase;
     color: #888;
@@ -72,34 +83,43 @@
   }
 
   .preview-ball {
-    width: 26px;
-    height: 26px;
+    width: clamp(20px, 5vw, 26px);
+    height: clamp(20px, 5vw, 26px);
     border-radius: 50%;
     box-shadow: inset -3px -3px 6px rgba(0,0,0,0.4), inset 2px 2px 5px rgba(255,255,255,0.35);
+    flex-shrink: 0;
   }
 
-  /* ── Grid ── */
+  /* ── Grid Container ── */
   #board-wrap {
     position: relative;
+    width: 100%;
+    max-width: 600px;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   #board {
     display: grid;
-    grid-template-columns: repeat(9, 60px);
-    grid-template-rows: repeat(9, 60px);
-    gap: 3px;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    gap: clamp(2px, 1.5vw, 4px);
     background: #0d0d1a;
-    padding: 6px;
-    border-radius: 10px;
+    padding: clamp(4px, 2vw, 8px);
+    border-radius: clamp(6px, 2vw, 10px);
     border: 2px solid #2a2a4a;
     box-shadow: 0 0 40px rgba(0,0,0,0.7);
+    width: 100%;
+    aspect-ratio: 1;
   }
 
   .cell {
-    width: 60px;
-    height: 60px;
+    width: 100%;
+    aspect-ratio: 1;
     background: #16213e;
-    border-radius: 6px;
+    border-radius: clamp(4px, 1.5vw, 6px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -107,16 +127,21 @@
     transition: background 0.15s;
     position: relative;
     overflow: visible;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .cell:hover {
     background: #1f2f55;
   }
 
+  .cell:active {
+    background: #1f3a5f;
+  }
+
   /* ── Ball ── */
   .ball {
-    width: 46px;
-    height: 46px;
+    width: 85%;
+    height: 85%;
     border-radius: 50%;
     position: absolute;
     transition: transform 0.1s;
@@ -191,6 +216,7 @@
     justify-content: center;
     flex-direction: column;
     z-index: 100;
+    padding: 20px;
   }
 
   #overlay.active {
@@ -198,21 +224,23 @@
   }
 
   #overlay h2 {
-    font-size: 3rem;
+    font-size: clamp(2rem, 8vw, 3rem);
     color: #f0c040;
     text-shadow: 0 0 20px #f0c040;
     margin-bottom: 10px;
+    text-align: center;
   }
 
   #overlay p {
-    font-size: 1.3rem;
+    font-size: clamp(1rem, 4vw, 1.3rem);
     color: #ccc;
     margin-bottom: 30px;
+    text-align: center;
   }
 
   #overlay button, #new-game-btn {
-    padding: 12px 36px;
-    font-size: 1.1rem;
+    padding: clamp(10px, 3vw, 12px) clamp(24px, 6vw, 36px);
+    font-size: clamp(0.9rem, 3vw, 1.1rem);
     font-weight: 700;
     letter-spacing: 2px;
     text-transform: uppercase;
@@ -223,6 +251,8 @@
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
     box-shadow: 0 4px 16px rgba(240,192,64,0.4);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   #overlay button:hover, #new-game-btn:hover {
@@ -230,10 +260,14 @@
     box-shadow: 0 6px 20px rgba(240,192,64,0.6);
   }
 
+  #overlay button:active, #new-game-btn:active {
+    transform: translateY(0px);
+  }
+
   #new-game-btn {
     margin-top: 16px;
-    font-size: 0.85rem;
-    padding: 8px 22px;
+    font-size: clamp(0.75rem, 2.5vw, 0.85rem);
+    padding: clamp(8px, 2vw, 8px) clamp(16px, 4vw, 22px);
     background: #2a2a4a;
     color: #aaa;
     box-shadow: none;
@@ -247,12 +281,77 @@
 
   /* ── Instructions ── */
   #instructions {
-    margin-top: 18px;
-    font-size: 0.75rem;
+    margin-top: 12px;
+    font-size: clamp(0.65rem, 2vw, 0.75rem);
     color: #555;
     text-align: center;
-    line-height: 1.8;
+    line-height: 1.6;
     letter-spacing: 0.5px;
+    max-width: 90vw;
+  }
+
+  /* ── Mobile optimizations ── */
+  @media (max-width: 480px) {
+    body {
+      padding: 6px;
+      justify-content: flex-start;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+
+    h1 {
+      margin-bottom: 6px;
+    }
+
+    #scorebar {
+      margin-bottom: 10px;
+    }
+
+    #next-preview {
+      margin-bottom: 10px;
+    }
+
+    #board-wrap {
+      max-width: 95vw;
+      margin: 0 auto;
+    }
+
+    #instructions {
+      margin-top: 10px;
+      font-size: 0.6rem;
+      line-height: 1.4;
+    }
+  }
+
+  @media (max-height: 600px) {
+    body {
+      justify-content: center;
+      min-height: auto;
+      padding: 4px;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: 1.3rem;
+    }
+
+    #scorebar {
+      gap: 20px;
+      margin-bottom: 8px;
+    }
+
+    .score-value {
+      font-size: 1.2rem;
+    }
+
+    #next-preview {
+      margin-bottom: 8px;
+    }
+
+    #instructions {
+      margin-top: 8px;
+      font-size: 0.55rem;
+    }
   }
 </style>
 </head>
@@ -285,8 +384,7 @@
 <button id="new-game-btn">New Game</button>
 
 <div id="instructions">
-  Click a ball to select it &nbsp;·&nbsp; Click an empty cell to move &nbsp;·&nbsp;
-  Line up 5+ balls in a row, column, or diagonal to score
+  Click a ball to select · Click empty cell to move · Line up 5+ to score
 </div>
 
 <!-- Game Over Overlay -->
@@ -298,7 +396,7 @@
 
 <script>
 // ═══════════════════════════════════════════════════════
-//  LINES 97  –  Pure JS, single file
+//  LINES 97  –  Pure JS, single file, fully responsive
 // ═══════════════════════════════════════════════════════
 
 const GRID = 9;
