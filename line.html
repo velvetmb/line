@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balls Logic Game</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .game-info {
+            display: flex;
+            gap: 20px;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        .game-container {
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #34495e;
+            padding: 10px;
+        }
+
+        canvas {
+            display: block;
+            cursor: pointer;
+            touch-action: manipulation; /* Improves mobile touch */
+            background-color: #2c3e50;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 10px 25px;
+            font-size: 18px;
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        button:hover {
+            background-color: #c0392b;
+        }
+        
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            max-width: 500px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Balls Logic Puzzle</h1>
+    
+    <div class="game-info">
+        <div>Score: <span id="score">0</span></div>
+        <div>Moves: <span id="moves">0</span></div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="game-canvas" width="500" height="400"></canvas>
+    </div>
+
+    <div class="controls">
+        <button id="restart-btn">New Game</button>
+    </div>
+
+    <p class="instructions">
+        <strong>How to Play:</strong> Click on a colored ball, then click an empty cell. 
+        If you create a line of 5 or more balls (horizontal, vertical, or diagonal), they will pop!
+        Don't let the grid fill up.
+    </p>
+
+    <script>
+        // --- CONFIGURATION & CONSTANTS ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set the size of each cell based on canvas width
+        const CELL_SIZE = 50; 
+        const GRID_ROWS = 8;
+        const GRID_COLS = 10;
+        
+        let isGameOver = false;
+        let grid = [];
+        let currentBallColor = '';
+        
+        // Colors: Red, Yellow, Green, Purple, Blue, Orange
+        const COLORS = ['#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#3498db', '#e67e22'];
+
+        let score = 0;
+        let moves = 0;
+
+        // --- INITIALIZATION ---
+
+        function initGrid() {
+            grid = Array(GRID_ROWS).fill(null).map(() => Array(GRID_COLS).fill(null));
+            score = 0;
+            moves = 0;
+            isGameOver = false;
+            
+            // Add initial balls (5 random ones)
+            addBalls(5);
+            currentBallColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            updateUI();
+        }
+
+        function addBalls(amount) {
+            let emptyCells = [];
+            
+            // Find all empty cells
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if (grid[r][c] === null) {
+                        emptyCells.push({r, c});
+                    }
+                }
+            }
+
+            // Randomly select cells to fill
+            for (let i = 0; i < amount; i++) {
+                if (emptyCells.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * emptyCells.length);
+                    const cell = emptyCells[randomIndex];
+                    
+                    grid[cell.r][cell.c] = {
+                        x: cell.c * CELL_SIZE + (CELL_SIZE / 2),
+                        y: cell.r * CELL_SIZE + (CELL_SIZE / 2),
+                        color: COLORS[Math.floor(Math.random() * COLORS.length)]
+                    };
+                    
+                    emptyCells.splice(randomIndex, 1); // Remove filled cell from list
+                }
+            }
+
+            checkGameOver();
+        }
+
+        function checkGameOver() {
+            let hasEmptySpace = false;
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if (grid[r][c] === null) {
+                        hasEmptySpace = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasEmptySpace) {
+                isGameOver = true;
+            }
+        }
+
+        // --- GAME LOGIC ---
+
+        function checkAndClearLines() {
+            let linesCleared = 0;
+            let ballsToRemove = new Set(); // Store unique coordinates to remove
+
+            // Helper to add ball to removal list
+            const addToRemoveList = (r, c) => {
+                if (grid[r][c] !== null) {
+                    ballsToRemove.add(`${r},${c}`);
+                }
+            };
+
+            // 1. Check Horizontal Lines
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c <= GRID_COLS - 5; c++) {
+                    let color = grid[r][c]?.color;
+                    if (color === null) continue;
+                    let matchCount = 1;
+                    
+                    while (matchCount < 5 && grid[r][c + matchCount] && grid[r][c + matchCount].color === color) {
+                        matchCount++;
+                    }
+
+                    if (matchCount >= 5) {
+                        for (let k = 0; k < matchCount; k++) addToRemoveList(r, c + k);
+                        linesCleared++;
+                    }
+                }
+            }
+
+            // 2. Check Vertical Lines
+            for (let c = 0; c < GRID_COLS; c++) {
+                for (let r = 0; r <= GRID_ROWS - 5; r++) {
+                    let color = grid[r][c]?.color;
+                    if (color === null) continue;
+                    let matchCount = 1;
+
+                    while (matchCount < 5 && grid[r + matchCount][c] && grid[r + matchCount][c].color === color) {
+                        matchCount++;
+                    }
+
+                    if (matchCount >= 5) {
+                        for (let k = 0; k < matchCount; k++) addToRemoveList(r + k, c);
+                        linesCleared++;
+                    }
+                }
+            }
+
+            // 3. Check Diagonal Lines (Bottom-Left to Top-Right)
+            for (let r = 4; r < GRID_ROWS; r++) {
+                for (let c = 0; c <= GRID_COLS - 5; c++) {
+                    let color = grid[r][c]?.color;
+                    if (color === null) continue;
+                    let matchCount = 1;
+
+                    while (matchCount < 5 && grid[r - matchCount][c + matchCount] && grid[r - matchCount][c + matchCount].color === color) {
+                        matchCount++;
+                    }
+
+                    if (matchCount >= 5) {
+                        for (let k = 0; k < matchCount; k++) addToRemoveList(r - k, c + k);
+                        linesCleared++;
+                    }
+                }
+            }
+
+            // 4. Check Diagonal Lines (Top-Left to Bottom-Right)
+            for (let r = 0; r <= GRID_ROWS - 5; r++) {
+                for (let c = 0; c <= GRID_COLS - 5; c++) {
+                    let color = grid[r][c]?.color;
+                    if (color === null) continue;
+                    let matchCount = 1;
+
+                    while (matchCount < 5 && grid[r + matchCount][c + matchCount] && grid[r + matchCount][c + matchCount].color === color) {
+                        matchCount++;
+                    }
+
+                    if (matchCount >= 5) {
+                        for (let k = 0; k < matchCount; k++) addToRemoveList(r + k, c + k);
+                        linesCleared++;
+                    }
+                }
+            }
+
+            // Remove balls and update score
+            if (ballsToRemove.size > 0) {
+                ballsToRemove.forEach(coord => {
+                    const [r, c] = coord.split(',').map(Number);
+                    grid[r][c] = null;
+                });
+                
+                // Score calculation: 10 points per ball popped + bonus for lines
+                score += (ballsToRemove.size * 10) + (linesCleared * 50);
+                updateUI();
+            }
+
+            return linesCleared;
+        }
+
+        // --- INTERACTION ---
+
+        let selectedBall = null; // Stores {r, c} of the ball currently selected
+
+        canvas.addEventListener('click', (e) => {
+            if (isGameOver) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const col = Math.floor(x / CELL_SIZE);
+            const row = Math.floor(y / CELL_SIZE);
+
+            // Case 1: User clicked a BALL
+            if (grid[row][col] !== null) {
+                selectedBall = { r: row, c: col };
+                return;
+            }
+
+            // Case 2: User clicked an EMPTY SPACE
+            if (selectedBall && grid[row][col] === null) {
+                // Move the ball
+                const ballColor = grid[selectedBall.r][selectedBall.c].color;
+                
+                grid[row][col] = {
+                    x: col * CELL_SIZE + (CELL_SIZE / 2),
+                    y: row * CELL_SIZE + (CELL_SIZE / 2),
+                    color: ballColor
+                };
+                
+                // Clear the old position
+                grid[selectedBall.r][selectedBall.c] = null;
+                selectedBall = null;
+
+                moves++;
+                updateUI();
+
+                // Check for matches immediately
+                checkAndClearLines();
+                
+                // Add new balls (3 each move)
+                addBalls(3);
+            }
+        });
+
+        function updateUI() {
+            document.getElementById('score').innerText = score;
+            document.getElementById('moves').innerText = moves;
+        }
+
+        // --- RENDERING ---
+
+        function drawRoundedCircle(ctx, x, y, radius, color) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            
+            // Add a slight gradient/shadow for a "3D" look
+            let gradient = ctx.createRadialGradient(x - 5, y - 5, 2, x, y, radius);
+            gradient.addColorStop(0, lightenColor(color, 40));
+            gradient.addColorStop(1, color);
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Border
+            ctx.strokeStyle = "rgba(0,0,0,0.2)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+
+            // Glow effect if selected
+            if (selectedBall && selectedBall.r === row && selectedBall.c === col) {
+                ctx.beginPath();
+                ctx.arc(x, y, radius + 4, 0, Math.PI * 2);
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+            }
+        }
+
+        // Helper to lighten colors for gradients
+        function lightenColor(color, percent) {
+            const num = parseInt(color.replace("#",""),16),
+            amt = Math.round(2.55 * percent),
+            R = (num >> 16) + amt,
+            B = (num >> 8 & 0x00FF) + amt,
+            G = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 + (B<255?B<1?0:B:255)*0x100 + (G<255?G<1?0:G:255)).toString(16).slice(1);
+        }
+
+        function drawGrid() {
+            // Draw background grid lines
+            ctx.strokeStyle = "rgba(255,255,255,0.1)";
+            ctx.lineWidth = 1;
+            
+            for (let r = 0; r <= GRID_ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(0, r * CELL_SIZE);
+                ctx.lineTo(GRID_COLS * CELL_SIZE, r * CELL_SIZE);
+                ctx.stroke();
+            }
+            for (let c = 0; c <= GRID_COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(c * CELL_SIZE, 0);
+                ctx.lineTo(c * CELL_SIZE, GRID_ROWS * CELL_SIZE);
+                ctx.stroke();
+            }
+        }
+
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+
+            // Draw balls
+            for (let r = 0; r < GRID_ROWS; r++) {
+                for (let c = 0; c < GRID_COLS; c++) {
+                    if (grid[r][c] !== null) {
+                        drawRoundedCircle(ctx, grid[r][c].x, grid[r][c].y, CELL_SIZE/2 - 5, grid[r][c].color);
+                    }
+                }
+            }
+
+            // Draw Game Over Overlay
+            if (isGameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = "#ecf0f1";
+                ctx.font = "40px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+                ctx.font = "25px Arial";
+                ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 30);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- START ---
+        
+        document.getElementById('restart-btn').addEventListener('click', initGrid);
+
+        initGrid();
+        gameLoop();
+
+    </script>
+</body>
+</html>
