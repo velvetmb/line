@@ -1,9 +1,7 @@
 /*
  * Lines — Home Page
- * Integrates: game engine, board theme, sound engine, mute toggle, theme selector
- * 
- * Sounds simplified: select (pick marble), drop (place marble), lineClear (Switch click)
- * 
+ * Integrates: game engine, board theme, ball theme, sound engine, settings panel
+ *
  * Mobile-first layout:
  * - Mobile: compact header + score row, board fills width, controls below
  * - Desktop: side panel with score/controls, board centered
@@ -17,7 +15,7 @@ import ScorePanel from '@/components/ScorePanel';
 import GameControls from '@/components/GameControls';
 import GameOverDialog from '@/components/GameOverDialog';
 import HowToPlay from '@/components/HowToPlay';
-import ThemeSelector from '@/components/ThemeSelector';
+import SettingsPanel from '@/components/SettingsPanel';
 import MuteButton from '@/components/MuteButton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
@@ -36,32 +34,23 @@ export default function Home() {
     const prev = prevStateRef.current;
     prevStateRef.current = gameState;
 
-    // Line clear sound — Nintendo Switch click
     if (gameState.clearingCells.length > 0 && prev.clearingCells.length === 0) {
       sound.playLineClear();
     }
   }, [gameState, sound]);
 
-  // Wrapped handlers that play sounds
   const handleCellClick = useCallback((row: number, col: number) => {
     const cell = gameState.board[row][col];
     if (cell.marble && !(gameState.selectedPos?.row === row && gameState.selectedPos?.col === col)) {
-      // Selecting a marble
       sound.playSelect();
     } else if (!cell.marble && gameState.selectedPos) {
-      // Dropping a marble (attempting move)
       sound.playDrop();
     }
     selectCell(row, col);
   }, [gameState.board, gameState.selectedPos, selectCell, sound]);
 
-  const handleUndo = useCallback(() => {
-    undo();
-  }, [undo]);
-
-  const handleNewGame = useCallback(() => {
-    newGame();
-  }, [newGame]);
+  const handleUndo = useCallback(() => { undo(); }, [undo]);
+  const handleNewGame = useCallback(() => { newGame(); }, [newGame]);
 
   useEffect(() => {
     document.body.style.overscrollBehavior = 'none';
@@ -73,6 +62,13 @@ export default function Home() {
   }, []);
 
   const isImagePageBg = theme.pageBg.includes('url(');
+
+  const settingsProps = {
+    muted: sound.muted,
+    volume: sound.volume,
+    onToggleMute: sound.toggleMute,
+    onVolumeChange: sound.setVolume,
+  };
 
   return (
     <div
@@ -111,9 +107,8 @@ export default function Home() {
             Classic Marble Puzzle
           </p>
 
-          {/* Theme selector + Mute — top right on desktop, below title on mobile */}
-          <div className="flex items-center justify-center gap-3 mt-2 sm:mt-3 lg:absolute lg:right-6 lg:top-1/2 lg:-translate-y-1/2 lg:mt-0">
-            <ThemeSelector />
+          {/* Mute + Settings gear — top right on desktop, below title on mobile */}
+          <div className="flex items-center justify-center gap-1 mt-2 sm:mt-3 lg:absolute lg:right-6 lg:top-1/2 lg:-translate-y-1/2 lg:mt-0">
             <MuteButton muted={sound.muted} onToggle={sound.toggleMute} color={theme.headerText} />
           </div>
         </header>
@@ -126,59 +121,40 @@ export default function Home() {
             <div className="hidden lg:flex gap-6 items-start justify-center">
               {/* Left side panel */}
               <div className="flex flex-col gap-4 w-56 flex-shrink-0">
-                <ScorePanel
-                  score={gameState.score}
-                  highScore={gameState.highScore}
-                />
-                <GameControls
-                  canUndo={gameState.canUndo}
-                  onUndo={handleUndo}
-                  onNewGame={handleNewGame}
-                />
+                <ScorePanel score={gameState.score} highScore={gameState.highScore} />
+                <GameControls canUndo={gameState.canUndo} onUndo={handleUndo} onNewGame={handleNewGame} />
                 <HowToPlay />
+                <SettingsPanel {...settingsProps} />
               </div>
 
               {/* Game Board */}
               <div className="flex-shrink-0" style={{ width: '500px' }}>
-                <GameBoard
-                  gameState={gameState}
-                  onCellClick={handleCellClick}
-                />
+                <GameBoard gameState={gameState} onCellClick={handleCellClick} />
               </div>
             </div>
 
             {/* ===== MOBILE / TABLET LAYOUT (<lg) ===== */}
             <div className="lg:hidden flex flex-col items-center gap-2 sm:gap-3">
-              {/* Score row */}
               <div className="w-full flex gap-2 sm:gap-3" style={{ maxWidth: 'min(100%, 420px)' }}>
                 <div className="flex-1">
-                  <ScorePanel
-                    score={gameState.score}
-                    highScore={gameState.highScore}
-                  />
+                  <ScorePanel score={gameState.score} highScore={gameState.highScore} />
                 </div>
               </div>
 
-              {/* Game Board */}
               <div className="w-full" style={{ maxWidth: 'min(100%, 420px)' }}>
-                <GameBoard
-                  gameState={gameState}
-                  onCellClick={handleCellClick}
-                />
+                <GameBoard gameState={gameState} onCellClick={handleCellClick} />
               </div>
 
-              {/* Controls below board */}
               <div className="w-full" style={{ maxWidth: 'min(100%, 420px)' }}>
-                <GameControls
-                  canUndo={gameState.canUndo}
-                  onUndo={handleUndo}
-                  onNewGame={handleNewGame}
-                />
+                <GameControls canUndo={gameState.canUndo} onUndo={handleUndo} onNewGame={handleNewGame} />
               </div>
 
-              {/* How to Play */}
               <div className="w-full" style={{ maxWidth: 'min(100%, 420px)' }}>
                 <HowToPlay />
+              </div>
+
+              <div className="w-full" style={{ maxWidth: 'min(100%, 420px)' }}>
+                <SettingsPanel {...settingsProps} />
               </div>
             </div>
           </div>

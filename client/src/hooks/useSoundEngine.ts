@@ -4,11 +4,11 @@
  * - select: soft click when picking a marble
  * - drop: gentle thud when placing a marble
  * - lineClear: Nintendo Switch-style "click" — crisp, iconic, satisfying
- * 
- * Includes mute toggle with localStorage persistence
+ *
+ * Includes mute toggle and volume control with localStorage persistence
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function getAudioContext(): AudioContext | null {
   try {
@@ -20,6 +20,8 @@ function getAudioContext(): AudioContext | null {
 
 export function useSoundEngine() {
   const ctxRef = useRef<AudioContext | null>(null);
+  const masterGainRef = useRef<GainNode | null>(null);
+
   const [muted, setMuted] = useState(() => {
     try {
       return localStorage.getItem('lines_muted') === 'true';
@@ -28,10 +30,25 @@ export function useSoundEngine() {
     }
   });
 
-  // Lazy-init audio context on first user interaction
+  const [volume, setVolumeState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('lines_volume');
+      if (saved !== null) {
+        const v = Number(saved);
+        if (v >= 0 && v <= 100) return v;
+      }
+    } catch {}
+    return 75;
+  });
+
+  // Lazy-init audio context and master gain on first user interaction
   const ensureCtx = useCallback(() => {
     if (!ctxRef.current) {
       ctxRef.current = getAudioContext();
+      if (ctxRef.current) {
+        masterGainRef.current = ctxRef.current.createGain();
+        masterGainRef.current.connect(ctxRef.current.destination);
+      }
     }
     const ctx = ctxRef.current;
     if (ctx && ctx.state === 'suspended') {
@@ -39,6 +56,13 @@ export function useSoundEngine() {
     }
     return ctx;
   }, []);
+
+  // Sync master gain with mute/volume state
+  useEffect(() => {
+    if (masterGainRef.current) {
+      masterGainRef.current.gain.value = muted ? 0 : volume / 100;
+    }
+  }, [muted, volume]);
 
   const toggleMute = useCallback(() => {
     setMuted(prev => {
@@ -48,11 +72,21 @@ export function useSoundEngine() {
     });
   }, []);
 
+  const setVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(v)));
+    setVolumeState(clamped);
+    try { localStorage.setItem('lines_volume', String(clamped)); } catch {}
+  }, []);
+
+  // Helper: connect to master gain instead of destination
+  const getMaster = useCallback(() => masterGainRef.current, []);
+
   // Marble select — soft click/tap
   const playSelect = useCallback(() => {
     if (muted) return;
     const ctx = ensureCtx();
-    if (!ctx) return;
+    const master = getMaster();
+    if (!ctx || !master) return;
     const t = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -62,16 +96,17 @@ export function useSoundEngine() {
     osc.frequency.exponentialRampToValueAtTime(600, t + 0.06);
     gain.gain.setValueAtTime(0.12, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(master);
     osc.start(t);
     osc.stop(t + 0.07);
-  }, [muted, ensureCtx]);
+  }, [muted, ensureCtx, getMaster]);
 
   // Marble drop — gentle soft thud when marble lands
   const playDrop = useCallback(() => {
     if (muted) return;
     const ctx = ensureCtx();
-    if (!ctx) return;
+    const master = getMaster();
+    if (!ctx || !master) return;
     const t = ctx.currentTime;
 
     const osc = ctx.createOscillator();
@@ -81,17 +116,17 @@ export function useSoundEngine() {
     osc.frequency.exponentialRampToValueAtTime(160, t + 0.08);
     gain.gain.setValueAtTime(0.1, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(master);
     osc.start(t);
     osc.stop(t + 0.1);
-  }, [muted, ensureCtx]);
+  }, [muted, ensureCtx, getMaster]);
 
   // Line clear — Nintendo Switch Joy-Con "click" style
-  // Crisp, bright, iconic two-part click with a metallic snap feel
   const playLineClear = useCallback(() => {
     if (muted) return;
     const ctx = ensureCtx();
-    if (!ctx) return;
+    const master = getMaster();
+    if (!ctx || !master) return;
     const t = ctx.currentTime;
 
     // Part 1: Sharp initial transient — the "snap"
@@ -102,7 +137,7 @@ export function useSoundEngine() {
     snap.frequency.exponentialRampToValueAtTime(1800, t + 0.015);
     snapGain.gain.setValueAtTime(0.18, t);
     snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
-    snap.connect(snapGain).connect(ctx.destination);
+    snap.connect(snapGain).connect(master);
     snap.start(t);
     snap.stop(t + 0.03);
 
@@ -114,7 +149,7 @@ export function useSoundEngine() {
     ring.frequency.exponentialRampToValueAtTime(1000, t + 0.12);
     ringGain.gain.setValueAtTime(0.14, t + 0.01);
     ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    ring.connect(ringGain).connect(ctx.destination);
+    ring.connect(ringGain).connect(master);
     ring.start(t + 0.01);
     ring.stop(t + 0.12);
 
@@ -126,7 +161,7 @@ export function useSoundEngine() {
     sub.frequency.exponentialRampToValueAtTime(400, t + 0.08);
     subGain.gain.setValueAtTime(0.08, t + 0.005);
     subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    sub.connect(subGain).connect(ctx.destination);
+    sub.connect(subGain).connect(master);
     sub.start(t + 0.005);
     sub.stop(t + 0.08);
 
@@ -145,14 +180,16 @@ export function useSoundEngine() {
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
     hpf.frequency.setValueAtTime(4000, t);
-    noise.connect(hpf).connect(noiseGain).connect(ctx.destination);
+    noise.connect(hpf).connect(noiseGain).connect(master);
     noise.start(t);
     noise.stop(t + 0.025);
-  }, [muted, ensureCtx]);
+  }, [muted, ensureCtx, getMaster]);
 
   return {
     muted,
+    volume,
     toggleMute,
+    setVolume,
     playSelect,
     playDrop,
     playLineClear,

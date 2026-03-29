@@ -4,6 +4,7 @@ import { Route, Switch, Router as WouterRouter } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { BoardThemeProvider } from "./contexts/BoardThemeContext";
+import { BallThemeProvider } from "./contexts/BallThemeContext";
 import Home from "./pages/Home";
 
 function Router() {
@@ -24,9 +25,11 @@ function App() {
       <WouterRouter base={base}>
         <ThemeProvider defaultTheme="light">
           <BoardThemeProvider>
-            <TooltipProvider>
-              <Router />
-            </TooltipProvider>
+            <BallThemeProvider>
+              <TooltipProvider>
+                <Router />
+              </TooltipProvider>
+            </BallThemeProvider>
           </BoardThemeProvider>
         </ThemeProvider>
       </WouterRouter>
