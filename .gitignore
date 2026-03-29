@@ -112,6 +112,11 @@ temp/
 client/public/__manus__/
 .manus-logs/
 
+# Development context (keep local, don't publish)
+CLAUDE.md
+docs/
+archive/
+
 # Development notes (not part of the game)
 ideas.md
 observations.md

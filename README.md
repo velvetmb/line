@@ -41,10 +41,9 @@ The dev server runs at `http://localhost:3000`.
 | Audio | Web Audio API |
 | Routing | Wouter |
 
-## Documentation
+## Play
 
-- [Game Design Document](docs/GAME_DESIGN_DOCUMENT.md) — Full design rationale, rules, architecture, and future improvement considerations
-- [Context Continuity Guide](docs/CONTEXT_CONTINUITY.md) — Everything needed to resume development in a new session
+[Play Lines](https://velvetmb.github.io/line/)
 
 ## License
 
