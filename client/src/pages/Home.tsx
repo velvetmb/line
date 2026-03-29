@@ -16,7 +16,6 @@ import GameControls from '@/components/GameControls';
 import GameOverDialog from '@/components/GameOverDialog';
 import HowToPlay from '@/components/HowToPlay';
 import SettingsPanel from '@/components/SettingsPanel';
-import MuteButton from '@/components/MuteButton';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function Home() {
@@ -85,7 +84,7 @@ export default function Home() {
         style={{ backgroundColor: theme.pageOverlay }}
       >
         {/* Header */}
-        <header className="py-2 sm:py-4 lg:py-6 text-center flex-shrink-0 relative">
+        <header className="py-1 sm:py-3 lg:py-6 text-center flex-shrink-0">
           <h1
             className="text-2xl sm:text-3xl lg:text-5xl font-bold tracking-tight"
             style={{
@@ -107,14 +106,10 @@ export default function Home() {
             Classic Marble Puzzle
           </p>
 
-          {/* Mute + Settings gear — top right on desktop, below title on mobile */}
-          <div className="flex items-center justify-center gap-1 mt-2 sm:mt-3 lg:absolute lg:right-6 lg:top-1/2 lg:-translate-y-1/2 lg:mt-0">
-            <MuteButton muted={sound.muted} onToggle={sound.toggleMute} color={theme.headerText} />
-          </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 px-2 sm:px-4 lg:px-6 pb-4 sm:pb-6 lg:pb-8 flex justify-center">
+        <main className="flex-1 px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-8 flex justify-center">
           <div className="w-full max-w-5xl">
 
             {/* ===== DESKTOP LAYOUT (lg+) ===== */}
@@ -134,7 +129,7 @@ export default function Home() {
             </div>
 
             {/* ===== MOBILE / TABLET LAYOUT (<lg) ===== */}
-            <div className="lg:hidden flex flex-col items-center gap-2 sm:gap-3">
+            <div className="lg:hidden flex flex-col items-center gap-1.5 sm:gap-3">
               <div className="w-full flex gap-2 sm:gap-3" style={{ maxWidth: 'min(100%, 420px)' }}>
                 <div className="flex-1">
                   <ScorePanel score={gameState.score} highScore={gameState.highScore} />
