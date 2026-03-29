@@ -1,4 +1,4 @@
-# Lines
+# Linea Pop
 
 A modern web recreation of the classic Lines 98 puzzle game, built with React 19, Vite 7, and Tailwind CSS 4.
 
@@ -30,21 +30,10 @@ pnpm build
 
 The dev server runs at `http://localhost:3000`.
 
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Framework | React 19 |
-| Build | Vite 7 |
-| Styling | Tailwind CSS 4 + inline styles |
-| Animation | Framer Motion 12 |
-| Audio | Web Audio API |
-| Routing | Wouter |
-
 ## Play
 
-[Play Lines](https://velvetmb.github.io/line/)
+[Play Linea Pop](https://velvetmb.github.io/line/)
 
 ## License
 
-MIT
+All Rights Reserved
