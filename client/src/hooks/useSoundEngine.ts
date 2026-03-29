@@ -121,7 +121,7 @@ export function useSoundEngine() {
     osc.stop(t + 0.1);
   }, [muted, ensureCtx, getMaster]);
 
-  // Line clear — Nintendo Switch Joy-Con "click" style
+  // Line clear — Switch-style snap/click with satisfying echo tail
   const playLineClear = useCallback(() => {
     if (muted) return;
     const ctx = ensureCtx();
@@ -129,15 +129,37 @@ export function useSoundEngine() {
     if (!ctx || !master) return;
     const t = ctx.currentTime;
 
+    // Echo bus — short reverb-like delay for that satisfying tail
+    const echoBus = ctx.createGain();
+    echoBus.gain.setValueAtTime(1, t);
+    const echo1 = ctx.createDelay(0.5);
+    echo1.delayTime.setValueAtTime(0.08, t);
+    const echo1Gain = ctx.createGain();
+    echo1Gain.gain.setValueAtTime(0.25, t);
+    const echo2 = ctx.createDelay(0.5);
+    echo2.delayTime.setValueAtTime(0.16, t);
+    const echo2Gain = ctx.createGain();
+    echo2Gain.gain.setValueAtTime(0.1, t);
+    // Soften the echoes with a lowpass filter
+    const echoFilter = ctx.createBiquadFilter();
+    echoFilter.type = 'lowpass';
+    echoFilter.frequency.setValueAtTime(3000, t);
+    // Dry signal → master, wet signal → delays → filter → master
+    echoBus.connect(master);
+    echoBus.connect(echo1);
+    echo1.connect(echo1Gain).connect(echoFilter).connect(master);
+    echoBus.connect(echo2);
+    echo2.connect(echo2Gain).connect(echoFilter);
+
     // Part 1: Sharp initial transient — the "snap"
     const snap = ctx.createOscillator();
     const snapGain = ctx.createGain();
     snap.type = 'square';
-    snap.frequency.setValueAtTime(3200, t);
-    snap.frequency.exponentialRampToValueAtTime(1800, t + 0.015);
-    snapGain.gain.setValueAtTime(0.18, t);
+    snap.frequency.setValueAtTime(3400, t);
+    snap.frequency.exponentialRampToValueAtTime(1600, t + 0.012);
+    snapGain.gain.setValueAtTime(0.2, t);
     snapGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
-    snap.connect(snapGain).connect(master);
+    snap.connect(snapGain).connect(echoBus);
     snap.start(t);
     snap.stop(t + 0.03);
 
@@ -145,44 +167,56 @@ export function useSoundEngine() {
     const ring = ctx.createOscillator();
     const ringGain = ctx.createGain();
     ring.type = 'sine';
-    ring.frequency.setValueAtTime(1400, t + 0.01);
-    ring.frequency.exponentialRampToValueAtTime(1000, t + 0.12);
-    ringGain.gain.setValueAtTime(0.14, t + 0.01);
-    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    ring.connect(ringGain).connect(master);
-    ring.start(t + 0.01);
-    ring.stop(t + 0.12);
+    ring.frequency.setValueAtTime(1500, t + 0.008);
+    ring.frequency.exponentialRampToValueAtTime(900, t + 0.15);
+    ringGain.gain.setValueAtTime(0.15, t + 0.008);
+    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    ring.connect(ringGain).connect(echoBus);
+    ring.start(t + 0.008);
+    ring.stop(t + 0.15);
 
-    // Part 3: Sub-harmonic body — gives it weight
+    // Part 3: Harmonic shimmer — adds that "sparkle" to the echo tail
+    const shimmer = ctx.createOscillator();
+    const shimmerGain = ctx.createGain();
+    shimmer.type = 'sine';
+    shimmer.frequency.setValueAtTime(2800, t + 0.01);
+    shimmer.frequency.exponentialRampToValueAtTime(2200, t + 0.1);
+    shimmerGain.gain.setValueAtTime(0.06, t + 0.01);
+    shimmerGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    shimmer.connect(shimmerGain).connect(echoBus);
+    shimmer.start(t + 0.01);
+    shimmer.stop(t + 0.1);
+
+    // Part 4: Sub-harmonic body — gives it weight
     const sub = ctx.createOscillator();
     const subGain = ctx.createGain();
     sub.type = 'sine';
     sub.frequency.setValueAtTime(700, t + 0.005);
-    sub.frequency.exponentialRampToValueAtTime(400, t + 0.08);
-    subGain.gain.setValueAtTime(0.08, t + 0.005);
-    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    sub.connect(subGain).connect(master);
+    sub.frequency.exponentialRampToValueAtTime(350, t + 0.1);
+    subGain.gain.setValueAtTime(0.1, t + 0.005);
+    subGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+    sub.connect(subGain).connect(echoBus);
     sub.start(t + 0.005);
-    sub.stop(t + 0.08);
+    sub.stop(t + 0.1);
 
-    // Part 4: Tiny noise burst for texture
-    const bufferSize = Math.floor(ctx.sampleRate * 0.02);
+    // Part 5: Noise burst for texture
+    const bufferSize = Math.floor(ctx.sampleRate * 0.025);
     const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 6);
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 5);
     }
     const noise = ctx.createBufferSource();
     noise.buffer = noiseBuffer;
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.1, t);
-    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.02);
+    noiseGain.gain.setValueAtTime(0.12, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
     hpf.frequency.setValueAtTime(4000, t);
-    noise.connect(hpf).connect(noiseGain).connect(master);
+    noise.connect(hpf).connect(noiseGain).connect(echoBus);
     noise.start(t);
-    noise.stop(t + 0.025);
+    noise.stop(t + 0.03);
   }, [muted, ensureCtx, getMaster]);
 
   return {

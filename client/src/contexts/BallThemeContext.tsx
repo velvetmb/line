@@ -23,6 +23,8 @@ export interface BallTheme {
   label: string;
   getMarbleStyle: (colors: MarbleColorSet, index: number, isSelected: boolean, isPreview: boolean) => React.CSSProperties;
   getOverlays: (colors: MarbleColorSet, index: number) => ReactNode;
+  /** Returns effective colors for effects (clearing animation, etc.). Sports overrides game colors with real ball colors. */
+  getEffectColors?: (colors: MarbleColorSet, index: number) => MarbleColorSet;
 }
 
 // ─── Classic: Glass marble (original) ───────────────────────────────────────
@@ -107,14 +109,26 @@ const billiardTheme: BallTheme = {
   ),
 };
 
-// ─── Sports: Each color is a different sport ball ───────────────────────────
+// ─── Sports: Each color is a real sport ball with authentic colors ──────────
 // 0:red=Basketball, 1:blue=Baseball, 2:green=Tennis, 3:yellow=Soccer,
-// 4:purple=Football/Rugby, 5:cyan=Bowling, 6:coral=Volleyball
+// 4:purple=Volleyball, 5:cyan=Football/Rugby, 6:coral=Bowling
+//
+// Each sport ball uses its REAL colors — the ball type itself is the identifier.
 
-const sportsOverlays: Record<number, (colors: MarbleColorSet) => ReactNode> = {
-  // Basketball (red) — seam lines
-  0: (colors) => {
-    const lc = `${colors.dark}99`;
+const SPORT_COLORS: Record<number, MarbleColorSet> = {
+  0: { base: '#e87121', light: '#f5a062', dark: '#1a0800', glow: 'rgba(232, 113, 33, 0.6)' },  // Basketball orange-brown
+  1: { base: '#f0ead8', light: '#fffef8', dark: '#c8bfa8', glow: 'rgba(200, 60, 60, 0.5)' },   // Baseball cream-white
+  2: { base: '#c6d831', light: '#e4f060', dark: '#7a8a10', glow: 'rgba(198, 216, 49, 0.6)' },   // Tennis neon yellow-green
+  3: { base: '#f2f2f2', light: '#ffffff', dark: '#222222', glow: 'rgba(120, 120, 120, 0.4)' },   // Soccer white
+  4: { base: '#1a56a8', light: '#e8eef8', dark: '#0c2d5e', glow: 'rgba(26, 86, 168, 0.6)' },    // Volleyball blue
+  5: { base: '#7a4422', light: '#b87a4a', dark: '#2a1008', glow: 'rgba(122, 68, 34, 0.6)' },     // Football brown leather
+  6: { base: '#cc1133', light: '#ff6670', dark: '#550011', glow: 'rgba(204, 17, 51, 0.6)' },     // Bowling red
+};
+
+const sportsOverlays: Record<number, () => ReactNode> = {
+  // Basketball — black seam lines (horizontal, vertical, two curved)
+  0: () => {
+    const lc = 'rgba(0,0,0,0.55)';
     return (
       <>
         <div style={{ position: 'absolute', top: '5%', left: '49%', width: '2px', height: '90%', background: lc, pointerEvents: 'none' }} />
@@ -129,17 +143,19 @@ const sportsOverlays: Record<number, (colors: MarbleColorSet) => ReactNode> = {
           borderRadius: '50%', border: `1.5px solid ${lc}`,
           borderColor: `transparent transparent transparent ${lc}`, pointerEvents: 'none',
         }} />
+        {/* Pebbled texture hint */}
         <div style={{
-          position: 'absolute', top: '10%', left: '22%', width: '30%', height: '20%', borderRadius: '50%',
-          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, transparent 100%)', pointerEvents: 'none',
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 30%, rgba(255,255,255,0.2) 0%, transparent 40%)',
+          pointerEvents: 'none',
         }} />
       </>
     );
   },
 
-  // Baseball (blue) — stitching arcs
-  1: (colors) => {
-    const sc = colors.dark;
+  // Baseball — red stitching arcs on cream ball
+  1: () => {
+    const sc = '#cc2222';
     const stitches = (baseTop: number, baseLeft: number, count: number, angle: number) =>
       Array.from({ length: count }, (_, i) => {
         const t = (i + 0.5) / count;
@@ -148,111 +164,150 @@ const sportsOverlays: Record<number, (colors: MarbleColorSet) => ReactNode> = {
         return (
           <div key={`s-${baseLeft}-${i}`} style={{
             position: 'absolute', top: `${top}%`, left: `${left}%`,
-            width: '6%', height: '2px', background: sc,
-            transform: `rotate(${angle + (t - 0.5) * 60}deg)`, pointerEvents: 'none', opacity: 0.7,
+            width: '6%', height: '1.5px', background: sc,
+            transform: `rotate(${angle + (t - 0.5) * 60}deg)`, pointerEvents: 'none',
           }} />
         );
       });
     return (
       <>
+        {/* Left curve */}
         <div style={{
           position: 'absolute', top: '-10%', left: '15%', width: '50%', height: '120%',
-          borderRadius: '50%', border: `1.5px solid ${sc}88`,
-          borderColor: `transparent ${sc}88 transparent transparent`,
+          borderRadius: '50%', border: `1.5px solid ${sc}`,
+          borderColor: `transparent ${sc} transparent transparent`,
           transform: 'rotate(10deg)', pointerEvents: 'none',
         }} />
-        {stitches(25, 55, 5, 80)}
+        {stitches(25, 55, 6, 80)}
+        {/* Right curve */}
         <div style={{
           position: 'absolute', top: '-10%', left: '35%', width: '50%', height: '120%',
-          borderRadius: '50%', border: `1.5px solid ${sc}88`,
-          borderColor: `transparent transparent transparent ${sc}88`,
+          borderRadius: '50%', border: `1.5px solid ${sc}`,
+          borderColor: `transparent transparent transparent ${sc}`,
           transform: 'rotate(-10deg)', pointerEvents: 'none',
         }} />
-        {stitches(25, 20, 5, -80)}
+        {stitches(25, 20, 6, -80)}
+        {/* Subtle highlight */}
         <div style={{
           position: 'absolute', top: '8%', left: '20%', width: '35%', height: '22%', borderRadius: '50%',
-          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.6) 0%, transparent 100%)',
+          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.7) 0%, transparent 100%)',
           transform: 'rotate(-20deg)', pointerEvents: 'none',
         }} />
       </>
     );
   },
 
-  // Tennis (green) — felt seam curves
+  // Tennis — silver/white curved seam lines on neon felt
   2: () => (
     <>
       <div style={{
         position: 'absolute', top: '-15%', left: '20%', width: '55%', height: '130%',
-        borderRadius: '50%', border: '2px solid rgba(255,255,255,0.55)',
-        borderColor: 'transparent rgba(255,255,255,0.55) transparent transparent',
+        borderRadius: '50%', border: '2.5px solid rgba(210,210,210,0.7)',
+        borderColor: 'transparent rgba(210,210,210,0.7) transparent transparent',
         transform: 'rotate(15deg)', pointerEvents: 'none',
       }} />
       <div style={{
         position: 'absolute', top: '-15%', left: '25%', width: '55%', height: '130%',
-        borderRadius: '50%', border: '2px solid rgba(255,255,255,0.55)',
-        borderColor: 'transparent transparent transparent rgba(255,255,255,0.55)',
+        borderRadius: '50%', border: '2.5px solid rgba(210,210,210,0.7)',
+        borderColor: 'transparent transparent transparent rgba(210,210,210,0.7)',
         transform: 'rotate(-15deg)', pointerEvents: 'none',
       }} />
+      {/* Felt fuzz texture */}
       <div style={{
         position: 'absolute', inset: 0, borderRadius: '50%',
-        background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.25) 0%, transparent 45%)',
+        background: 'radial-gradient(circle at 30% 25%, rgba(255,255,255,0.3) 0%, transparent 45%)',
         pointerEvents: 'none',
       }} />
     </>
   ),
 
-  // Soccer (yellow) — pentagon patches
-  3: (colors) => {
+  // Soccer — black pentagons on white ball
+  3: () => {
     const ps = (top: string, left: string, size: string, rot: number): React.CSSProperties => ({
       position: 'absolute', top, left, width: size, height: size,
       clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
-      background: `${colors.dark}cc`, transform: `rotate(${rot}deg)`, pointerEvents: 'none',
+      background: '#1a1a1a', transform: `rotate(${rot}deg)`, pointerEvents: 'none',
     });
     return (
       <>
-        <div style={ps('8%', '35%', '22%', 0)} />
-        <div style={ps('30%', '10%', '18%', 45)} />
-        <div style={ps('30%', '68%', '18%', -30)} />
-        <div style={ps('60%', '20%', '18%', 15)} />
-        <div style={ps('60%', '58%', '18%', -45)} />
+        <div style={ps('10%', '35%', '24%', 0)} />
+        <div style={ps('32%', '8%', '20%', 48)} />
+        <div style={ps('32%', '66%', '20%', -32)} />
+        <div style={ps('60%', '18%', '20%', 18)} />
+        <div style={ps('60%', '56%', '20%', -48)} />
+        {/* Panel edge lines */}
         <div style={{
-          position: 'absolute', top: '8%', left: '22%', width: '35%', height: '22%', borderRadius: '50%',
-          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.5) 0%, transparent 100%)',
-          transform: 'rotate(-20deg)', pointerEvents: 'none',
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: 'radial-gradient(circle at 35% 28%, rgba(255,255,255,0.45) 0%, transparent 40%)',
+          pointerEvents: 'none',
         }} />
       </>
     );
   },
 
-  // Football/Rugby (purple) — oval shape with laces
-  4: () => (
+  // Volleyball — white curved stripes on blue ball (Mikasa-style)
+  4: () => {
+    const sc = 'rgba(255,255,255,0.85)';
+    return (
+      <>
+        {/* Three curved panel stripes at ~120° intervals */}
+        {[0, 120, 240].map(rot => (
+          <div key={rot} style={{
+            position: 'absolute', top: '-20%', left: '28%', width: '44%', height: '140%',
+            borderRadius: '50%', pointerEvents: 'none',
+            borderLeft: `3px solid ${sc}`,
+            borderRight: `3px solid ${sc}`,
+            borderTop: 'none', borderBottom: 'none',
+            transform: `rotate(${rot}deg)`,
+          }} />
+        ))}
+        {/* Subtle yellow accent stripe on one panel (like Mikasa) */}
+        <div style={{
+          position: 'absolute', top: '15%', left: '32%', width: '36%', height: '28%',
+          borderRadius: '50%',
+          background: 'rgba(255, 220, 50, 0.2)',
+          transform: 'rotate(10deg)', pointerEvents: 'none',
+        }} />
+        {/* Highlight */}
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: 'radial-gradient(circle at 32% 28%, rgba(255,255,255,0.35) 0%, transparent 40%)',
+          pointerEvents: 'none',
+        }} />
+      </>
+    );
+  },
+
+  // Football/Rugby — brown leather with white laces
+  5: () => (
     <>
-      {/* Lace line down center */}
+      {/* Lace line */}
       <div style={{
-        position: 'absolute', top: '25%', left: '48%', width: '4%', height: '50%',
-        background: 'rgba(255,255,255,0.7)', borderRadius: '2px', pointerEvents: 'none',
+        position: 'absolute', top: '22%', left: '47%', width: '5%', height: '56%',
+        background: 'rgba(255,255,255,0.75)', borderRadius: '2px', pointerEvents: 'none',
       }} />
       {/* Cross laces */}
-      {[30, 38, 46, 54, 62].map(top => (
+      {[28, 36, 44, 52, 60, 68].map(top => (
         <div key={top} style={{
-          position: 'absolute', top: `${top}%`, left: '36%', width: '28%', height: '2px',
+          position: 'absolute', top: `${top}%`, left: '34%', width: '32%', height: '2px',
           background: 'rgba(255,255,255,0.6)', pointerEvents: 'none',
         }} />
       ))}
+      {/* Highlight */}
       <div style={{
-        position: 'absolute', top: '10%', left: '22%', width: '30%', height: '18%', borderRadius: '50%',
-        background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, transparent 100%)',
+        position: 'absolute', top: '8%', left: '20%', width: '32%', height: '20%', borderRadius: '50%',
+        background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, transparent 100%)',
         pointerEvents: 'none',
       }} />
     </>
   ),
 
-  // Bowling (cyan) — three finger holes
-  5: (colors) => {
+  // Bowling — three finger holes on glossy red
+  6: () => {
     const hs = (top: string, left: string): React.CSSProperties => ({
       position: 'absolute', top, left, width: '16%', height: '16%', borderRadius: '50%',
-      background: colors.dark,
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.6), inset 0 -1px 2px rgba(255,255,255,0.1)',
+      background: '#550011',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.7), inset 0 -1px 2px rgba(255,255,255,0.1)',
       pointerEvents: 'none',
     });
     return (
@@ -260,90 +315,70 @@ const sportsOverlays: Record<number, (colors: MarbleColorSet) => ReactNode> = {
         <div style={hs('18%', '42%')} />
         <div style={hs('38%', '28%')} />
         <div style={hs('38%', '56%')} />
+        {/* Strong glossy highlight */}
         <div style={{
-          position: 'absolute', top: '8%', left: '18%', width: '38%', height: '25%', borderRadius: '50%',
-          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0) 100%)',
+          position: 'absolute', top: '6%', left: '16%', width: '40%', height: '28%', borderRadius: '50%',
+          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 100%)',
           transform: 'rotate(-20deg)', pointerEvents: 'none',
-        }} />
-      </>
-    );
-  },
-
-  // Volleyball (coral) — curved panel lines
-  6: (colors) => {
-    const lc = `${colors.dark}88`;
-    return (
-      <>
-        {/* Three curved panel lines at 120° intervals */}
-        {[0, 120, 240].map(rot => (
-          <div key={rot} style={{
-            position: 'absolute', top: '-20%', left: '30%', width: '40%', height: '140%',
-            borderRadius: '50%', border: `1.5px solid ${lc}`,
-            borderColor: `${lc} transparent transparent transparent`,
-            transform: `rotate(${rot}deg)`, pointerEvents: 'none',
-          }} />
-        ))}
-        <div style={{
-          position: 'absolute', top: '10%', left: '22%', width: '30%', height: '20%', borderRadius: '50%',
-          background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.45) 0%, transparent 100%)',
-          pointerEvents: 'none',
         }} />
       </>
     );
   },
 };
 
-const sportsStyles: Record<number, (colors: MarbleColorSet, isSelected: boolean, isPreview: boolean) => React.CSSProperties> = {
-  // Basketball — slightly matte
-  0: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 40% 35%, ${colors.light}66 0%, transparent 40%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 12px ${colors.glow}, 0 0 16px ${colors.glow}, inset 0 -2px 4px rgba(0,0,0,0.2)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.35), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+const sportsStyles: Record<number, (sc: MarbleColorSet, isSelected: boolean, isPreview: boolean) => React.CSSProperties> = {
+  // Basketball — matte pebbled texture
+  0: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 40% 35%, ${sc.light}55 0%, transparent 40%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 120%)`,
+    boxShadow: isSelected ? `0 4px 12px ${sc.glow}, 0 0 16px ${sc.glow}, inset 0 -2px 4px rgba(0,0,0,0.25)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.25)`,
   }),
-  // Baseball — light/white tinted
-  1: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 35% 30%, white 0%, transparent 45%), radial-gradient(circle at 50% 50%, ${colors.light}ee 0%, ${colors.base}88 100%)`,
-    boxShadow: isSelected ? `0 4px 12px ${colors.glow}, 0 0 16px ${colors.glow}, inset 0 -2px 4px rgba(0,0,0,0.15)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.15)`,
+  // Baseball — smooth leather white/cream
+  1: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 35% 30%, ${sc.light} 0%, transparent 50%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 100%)`,
+    boxShadow: isSelected ? `0 4px 12px ${sc.glow}, 0 0 16px ${sc.glow}, inset 0 -2px 4px rgba(0,0,0,0.12)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.25), inset 0 -2px 4px rgba(0,0,0,0.12)`,
   }),
-  // Tennis — matte felt
-  2: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 50% 50%, ${colors.light}44 0%, transparent 60%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 10px ${colors.glow}, 0 0 14px ${colors.glow}, inset 0 0 8px rgba(255,255,255,0.15)` : isPreview ? 'none' : `0 2px 6px rgba(0,0,0,0.3), inset 0 0 8px rgba(255,255,255,0.15)`,
+  // Tennis — matte felt, no gloss
+  2: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 45% 40%, ${sc.light}55 0%, transparent 50%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 100%)`,
+    boxShadow: isSelected ? `0 4px 10px ${sc.glow}, 0 0 14px ${sc.glow}, inset 0 0 8px rgba(255,255,255,0.1)` : isPreview ? 'none' : `0 2px 6px rgba(0,0,0,0.3), inset 0 0 8px rgba(255,255,255,0.1)`,
   }),
-  // Soccer — standard sphere
-  3: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 35% 30%, ${colors.light}aa 0%, transparent 50%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 12px ${colors.glow}, 0 0 16px ${colors.glow}, inset 0 -2px 4px rgba(0,0,0,0.2)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.3), inset 0 -2px 4px rgba(0,0,0,0.2)`,
+  // Soccer — clean white sphere
+  3: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 35% 28%, ${sc.light} 0%, transparent 50%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, #d0d0d0 100%)`,
+    boxShadow: isSelected ? `0 4px 12px ${sc.glow}, 0 0 14px ${sc.glow}, inset 0 -2px 4px rgba(0,0,0,0.15)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.25), inset 0 -2px 4px rgba(0,0,0,0.15)`,
   }),
-  // Football/Rugby — slightly elongated look via gradient
-  4: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(ellipse at 40% 35%, ${colors.light}88 0%, transparent 45%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 12px ${colors.glow}, 0 0 16px ${colors.glow}, inset 0 -3px 6px rgba(0,0,0,0.3)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.4), inset 0 -3px 6px rgba(0,0,0,0.3)`,
+  // Volleyball — blue sphere
+  4: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 35% 28%, ${sc.light}44 0%, transparent 45%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 100%)`,
+    boxShadow: isSelected ? `0 4px 12px ${sc.glow}, 0 0 18px ${sc.glow}, inset 0 -3px 6px rgba(0,0,0,0.25)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.35), inset 0 -3px 6px rgba(0,0,0,0.25)`,
   }),
-  // Bowling — very glossy
-  5: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 30% 25%, ${colors.light}dd 0%, transparent 40%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 14px ${colors.glow}, 0 0 22px ${colors.glow}, inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.25)` : isPreview ? 'none' : `0 4px 10px rgba(0,0,0,0.45), inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.25)`,
+  // Football — leather with subtle grain
+  5: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(ellipse at 38% 32%, ${sc.light}66 0%, transparent 42%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 100%)`,
+    boxShadow: isSelected ? `0 4px 12px ${sc.glow}, 0 0 16px ${sc.glow}, inset 0 -3px 6px rgba(0,0,0,0.3)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.4), inset 0 -3px 6px rgba(0,0,0,0.3)`,
   }),
-  // Volleyball — smooth sphere
-  6: (colors, isSelected, isPreview) => ({
-    background: `radial-gradient(circle at 35% 30%, ${colors.light}bb 0%, transparent 50%), radial-gradient(circle at 50% 50%, ${colors.base} 0%, ${colors.dark} 100%)`,
-    boxShadow: isSelected ? `0 4px 12px ${colors.glow}, 0 0 18px ${colors.glow}, inset 0 -3px 6px rgba(0,0,0,0.25)` : isPreview ? 'none' : `0 3px 8px rgba(0,0,0,0.35), inset 0 -3px 6px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.15)`,
+  // Bowling — very glossy, shiny
+  6: (sc, isSelected, isPreview) => ({
+    background: `radial-gradient(circle at 28% 22%, ${sc.light}cc 0%, transparent 38%), radial-gradient(circle at 50% 50%, ${sc.base} 0%, ${sc.dark} 100%)`,
+    boxShadow: isSelected ? `0 4px 14px ${sc.glow}, 0 0 22px ${sc.glow}, inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.2)` : isPreview ? 'none' : `0 4px 10px rgba(0,0,0,0.45), inset 0 -4px 8px rgba(0,0,0,0.35), inset 0 3px 6px rgba(255,255,255,0.2)`,
   }),
 };
 
 const sportsTheme: BallTheme = {
   name: 'sports',
   label: 'Sports',
-  getMarbleStyle: (colors, index, isSelected, isPreview) => {
+  getMarbleStyle: (_colors, index, isSelected, isPreview) => {
+    const sc = SPORT_COLORS[index] ?? SPORT_COLORS[0];
     const styleFn = sportsStyles[index];
-    if (styleFn) return styleFn(colors, isSelected, isPreview);
-    return classicTheme.getMarbleStyle(colors, index, isSelected, isPreview);
+    if (styleFn) return styleFn(sc, isSelected, isPreview);
+    return classicTheme.getMarbleStyle(sc, index, isSelected, isPreview);
   },
-  getOverlays: (colors, index) => {
+  getOverlays: (_colors, index) => {
     const overlayFn = sportsOverlays[index];
-    if (overlayFn) return overlayFn(colors);
-    return classicTheme.getOverlays(colors, index);
+    if (overlayFn) return overlayFn();
+    return classicTheme.getOverlays(SPORT_COLORS[index] ?? SPORT_COLORS[0], index);
   },
+  getEffectColors: (_colors, index) => SPORT_COLORS[index] ?? SPORT_COLORS[0],
 };
 
 // ─── Theme Registry ─────────────────────────────────────────────────────────

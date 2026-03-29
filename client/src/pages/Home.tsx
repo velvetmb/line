@@ -93,7 +93,7 @@ export default function Home() {
               textShadow: '0 2px 8px rgba(0,0,0,0.5)',
             }}
           >
-            Lines
+            Linea Pop
           </h1>
           <p
             className="text-xs sm:text-sm mt-0.5"
@@ -103,7 +103,7 @@ export default function Home() {
               textShadow: '0 1px 4px rgba(0,0,0,0.5)',
             }}
           >
-            Classic Marble Puzzle
+            Marble Puzzle
           </p>
 
         </header>

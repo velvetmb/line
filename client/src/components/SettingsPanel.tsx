@@ -8,12 +8,12 @@ import { ChevronDown, ChevronUp, Volume2, VolumeX } from 'lucide-react';
 import { useBoardTheme, THEMES, type BoardThemeName } from '@/contexts/BoardThemeContext';
 import { useBallTheme, BALL_THEME_NAMES, BALL_THEMES, type BallThemeName } from '@/contexts/BallThemeContext';
 
-const THEME_SWATCHES: { name: BoardThemeName; color: string; label: string }[] = [
-  { name: 'walnut', color: '#5c3d2e', label: 'Walnut' },
-  { name: 'oak', color: '#b8956e', label: 'Oak' },
-  { name: 'cream', color: '#e8e0d4', label: 'Cream' },
-  { name: 'grass', color: '#6aad6a', label: 'Grass' },
-  { name: 'sky', color: '#6aacda', label: 'Sky' },
+const BOARD_THEME_OPTIONS: { name: BoardThemeName; label: string }[] = [
+  { name: 'walnut', label: 'Walnut' },
+  { name: 'oak', label: 'Oak' },
+  { name: 'cream', label: 'Cream' },
+  { name: 'grass', label: 'Grass' },
+  { name: 'sky', label: 'Sky' },
 ];
 
 interface SettingsPanelProps {
@@ -68,25 +68,25 @@ export default function SettingsPanel({ muted, volume, onToggleMute, onVolumeCha
             >
               Board Theme
             </p>
-            <div className="flex items-center gap-2">
-              {THEME_SWATCHES.map(({ name, color, label }) => {
+            <div className="flex flex-wrap gap-2">
+              {BOARD_THEME_OPTIONS.map(({ name, label }) => {
                 const isActive = boardThemeName === name;
                 return (
                   <button
                     key={name}
                     onClick={() => setBoardTheme(name)}
-                    className="relative rounded-full transition-all duration-200"
+                    className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200"
                     style={{
-                      width: 28, height: 28, backgroundColor: color,
-                      boxShadow: isActive
-                        ? `0 0 0 2px white, 0 0 0 4px ${color}, 0 2px 8px rgba(0,0,0,0.3)`
-                        : '0 1px 4px rgba(0,0,0,0.3)',
-                      transform: isActive ? 'scale(1.15)' : 'scale(1)',
-                      border: name === 'cream' ? '1px solid rgba(0,0,0,0.15)' : 'none',
+                      fontFamily: 'var(--font-body)',
+                      background: isActive ? boardTheme.btnPrimaryBg : 'rgba(128,128,128,0.15)',
+                      color: isActive ? boardTheme.btnPrimaryText : boardTheme.panelTextSecondary,
+                      boxShadow: isActive ? '0 2px 6px rgba(0,0,0,0.2)' : 'none',
+                      transform: isActive ? 'scale(1.05)' : 'scale(1)',
                     }}
                     aria-label={`${label} board theme`}
-                    title={label}
-                  />
+                  >
+                    {label}
+                  </button>
                 );
               })}
             </div>
