@@ -433,7 +433,7 @@ export function useGameEngine() {
 
       setTimeout(() => {
         animatingRef.current = false;
-      }, 300);
+      }, CLEAR_ANIMATION_MS);
 
       return {
         ...prev,
